@@ -118,7 +118,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--yes", action="store_true", help="Auto-continue on warnings when possible.")
     p.add_argument("--verbose", action="store_true", help="Verbose logs.")
-    p.add_argument("package", required=True, help="Target Debian package name.")
+    p.add_argument("package", help="Target Debian package name.")
     return p
 
 
