@@ -4,6 +4,7 @@ import argparse
 import time
 import sys
 from pathlib import Path
+from typing import List, Optional
 from pkg_fetcher.remote_deb_fetcher import RemoteDebFetcher
 from pkg_fetcher.sshsession import SSHSession
 from pkg_fetcher.utils import ToolError, info, warn, err
@@ -12,6 +13,7 @@ def run(
     host: str,
     user: str,
     package: str,
+    skip_packages: Optional[List[str]] = None,
     port: int = 22,
     out_dir: Path = Path("./deb_pkgs"),
     method: str = "auto",
@@ -66,6 +68,10 @@ def run(
                 if not pkgs:
                     raise ToolError("Dependency expansion returned empty list.")
 
+                if skip_packages:
+                    info(f"Skipping packages: {skip_packages}")
+                    pkgs = [p for p in pkgs if p not in skip_packages]
+
                 fetcher.download_packages(pkgs, remote_dir)
                 used_strategy = "apt-(r)depends + apt-get download"
 
@@ -116,6 +122,7 @@ def build_parser() -> argparse.ArgumentParser:
              "'uris' forces print-uris only. "
              "'rdepends' forces apt-(r)depends + apt-get download.",
     )
+    p.add_argument("--skips", type=str, help="Package names to skip during dependency resolution.")
     p.add_argument("--yes", action="store_true", help="Auto-continue on warnings when possible.")
     p.add_argument("--verbose", action="store_true", help="Verbose logs.")
     p.add_argument("package", help="Target Debian package name.")
@@ -133,6 +140,7 @@ def main() -> None:
             user=args.user,
             port=args.port,
             package=args.package,
+            skip_packages=args.skips.split(",") if args.skips else None,
             out_dir=out_dir,
             method=args.method,
             yes=args.yes,

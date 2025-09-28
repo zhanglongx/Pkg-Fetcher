@@ -153,7 +153,7 @@ class RemoteDebFetcher:
         )
         res = self.ssh.exec(cmd)
         if res.exit_status != 0:
-            raise ToolError("apt-get download failed for one or more packages.")
+            raise ToolError(f"apt-get download failed for one or more packages: {res.stderr.strip()}")
 
     def list_debs(self, remote_dir: str) -> List[str]:
         """List all .deb files inside remote_dir and return absolute paths."""
