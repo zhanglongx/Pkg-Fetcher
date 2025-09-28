@@ -3,6 +3,9 @@ from __future__ import annotations
 import argparse
 import time
 import sys
+import tarfile
+import shutil
+
 from pathlib import Path
 from typing import List, Optional
 from pkg_fetcher.remote_deb_fetcher import RemoteDebFetcher
@@ -13,9 +16,10 @@ def run(
     host: str,
     user: str,
     package: str,
+    out_dir: Path,
+    *,
     skip_packages: Optional[List[str]] = None,
     port: int = 22,
-    out_dir: Path = Path("./deb_pkgs"),
     method: str = "auto",
     yes: bool = False,
     verbose: bool = False,
@@ -129,29 +133,66 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def ensure_out_dir(path_str: str) -> Path:
+    p = Path(path_str)
+    if p.exists():
+        if not p.is_dir():
+            raise ToolError(f"Output path {p} exists and is not a directory.")
+        if any(p.iterdir()):
+            raise ToolError(f"Output directory {p} is not empty.")
+    else:
+        try:
+            p.mkdir(parents=True, exist_ok=False)
+        except Exception as e:
+            raise ToolError(f"Failed to create output directory {p}: {e}") from e
+    return p
+
+
+def archive_output_dir(out_dir: Path) -> None:
+    # Archive the output directory into a .tar.xz file using LZMA compression
+    tar_path = out_dir.parent / f"{out_dir.name}.tar.xz"
+    info(f"Archiving output directory to {tar_path} ...")
+
+    if tar_path.exists():
+        warn(f"Archive {tar_path} already exists. Overwriting.")
+        tar_path.unlink()
+    try:
+        # Open a tarfile in xz compression mode
+        with tarfile.open(tar_path, "w:xz") as tar:
+            tar.add(out_dir, arcname=out_dir.name)
+        info(f"Archive created: {tar_path}")
+    except Exception as e:
+        warn(f"Failed to create archive {tar_path}: {e}")
+
+
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
-    out_dir = Path(args.out)
+    out_dir = ensure_out_dir(f"{args.package}-deb")
     try:
         run(
             host=args.host,
             user=args.user,
             port=args.port,
+            out_dir=out_dir,
             package=args.package,
             skip_packages=args.skips.split(",") if args.skips else None,
-            out_dir=out_dir,
             method=args.method,
             yes=args.yes,
             verbose=args.verbose,
         )
+
+        archive_output_dir(out_dir)
     except ToolError as e:
         err(str(e))
         sys.exit(2)
     except KeyboardInterrupt:
         err("Interrupted by user.")
         sys.exit(130)
+
+    finally:
+        shutil.rmtree(out_dir, ignore_errors=True)
 
 
 if __name__ == "__main__":
