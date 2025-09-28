@@ -86,9 +86,7 @@ class RemoteDebFetcher:
         # Exclude optional relationships; keep hard Depends/PreDepends
         cmd = (
             "set -euo pipefail; "
-            f"apt-rdepends -p {shlex_quote(package)} 2>/dev/null | "
-            r"grep -E '^(Pre)?Depends:' | sed -E 's/.*Depends:\s+//' | sed -E 's/\s*\(.*\)//' | sed -E 's/\s*\|.*$//' | "
-            r"cat <(echo " + shlex_quote(package) + r") - | awk 'NF' | sort -u"
+            f"apt-rdepends -p {shlex_quote(package)} 2>/dev/null | grep -v '^ '"
         )
         res = self.ssh.exec(cmd)
         if res.exit_status != 0:

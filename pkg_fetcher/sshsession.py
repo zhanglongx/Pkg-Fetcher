@@ -25,17 +25,18 @@ class SSHSession:
 
     def connect(self) -> None:
         """
-        Try connecting with SSH agent + look_for_keys first.
+        Try connecting with look_for_keys first.
         If AuthenticationException occurs, prompt for password and retry.
         """
         try:
             if self.verbose:
-                info("Attempting key-based auth (agent + ~/.ssh)...")
+                info("Attempting key-based auth (~/.ssh)...")
+            # XXX: allow_agent=True will make look_for_keys=True failed
             self.client.connect(
                 hostname=self.hostname,
                 username=self.username,
                 port=self.port,
-                allow_agent=True,
+                allow_agent=False,
                 look_for_keys=True,
                 timeout=20,
             )
